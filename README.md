@@ -9,6 +9,19 @@ derived from the example in Figure 1 of [10.1371/journal.pcbi.1009835](https://d
 
 ## Repository Contents
 
+### Tutorials and Examples
+
+* [tutorial.ipynb](notebooks/tutorial.ipynb) provides an introduction to gmxapi concepts and syntax,
+   and works up to an example of a parallel simulation and analysis loop.
+   In our loop, we simulate a funnelweb spider peptide as it folds,
+   comparing to a reference structure, extending the trajectory with each iteration.
+   The loop terminates when the root-mean-squared displacement of the peptide backbone
+   is within our selected tolerance of the reference structure
+   (or when the "while loop" has exceeded a maximum number of iterations.)
+* [overview.ipynb](notebooks/overview.ipynb)
+   contains additional preliminary information
+   and checks to help set up and verify the Python environment.
+
 ### Sample inputs
 
 Sample input files for these examples have been shared from previous research projects. They are covered by separate copyright and licensing details.
@@ -50,8 +63,45 @@ First, install GROMACS 2022, create a Python virtual environment, and install th
     $ . /path/to/venv/bin/activate
     $ pip install -r requirements.txt
     ```
-2. Install the scalems package.
-3. *TBD*
+2. Launch the Jupyter notebook server.
+    ```shell
+    $ jupyter notebook
+    ```
+3. If your desktop environment does not automatically take you to the web interface,
+   copy the URL (with token) from the terminal output and paste into your web browser.
+4. Navigate to `notebooks`, and open `tutorial.ipynb`.
+
+### From Docker
+
+If you have [Docker](https://www.docker.com/get-started) installed,
+you can build an image from the included [Dockerfile](docker/example-complete.dockerfile)
+or `docker pull scalems/example-complete`.
+
+### Jupyter on Docker
+
+*WORK IN PROGRESS*
+
+Then, launch a container and redirect a local port to the 8888 http port in the container.
+Assuming port 8888 is available on your desktop:
+
+```shell
+$ docker run --rm -ti -p 8888:8888 gmxapi/tutorial
+```
+
+If your desktop environment does not automatically take you to the web interface,
+copy the URL (with token) from the terminal output and paste into your web browser. 
+Navigate to `notebooks`, and open `tutorial.ipynb`.
+
+### Docker notes
+**Warning:**
+The `--rm` in the command line above tells Docker to remove the container when you shut down the container.
+Any edits you make to the notebook will be lost.
+If you want to save your changes,
+the best choice is to use the File->Download option from within the notebook.
+Alternatively, you could explicitly make a snapshot of the container with
+[`docker commit`](https://docs.docker.com/engine/reference/commandline/commit/).
+You could run `docker` without the `--rm` option,
+but you will need to clean up extra containers manually to keep from filling up your hard disk.
 
 ## Caveats (TODOs)
 
