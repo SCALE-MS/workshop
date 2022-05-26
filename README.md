@@ -39,6 +39,14 @@ Note that `scalems` depends on [RADICAL Pilot](https://radicalpilot.readthedocs.
 If you use `pip` to install `scalems`, `radical.pilot` and its dependencies will be installed automatically.
 Refer to https://scale-ms.readthedocs.io/en/latest/install.html for more information.
 
+### Alternative: Docker
+
+If you prefer to use a containerized installation of the software and examples,
+and you are comfortable with Docker,
+see the [docker](docker) directory in this repository
+or pull `scalems/example-complete` from
+[DockerHub](https://hub.docker.com/r/scalems/example-complete).
+
 ## Accessing the tutorial material
 
 ### From a local Python virtual environment
@@ -52,6 +60,25 @@ First, install GROMACS 2022, create a Python virtual environment, and install th
     ```
 2. Install the scalems package.
 3. *TBD*
+
+### From Docker
+
+If you have [Docker](https://www.docker.com/get-started) installed,
+you can build an image from the included [Dockerfile](docker/example-complete.dockerfile)
+or `docker pull scalems/example-complete`.
+
+See [docker/README.md](docker/README.md) for more information.
+
+### Docker notes
+**Warning:**
+The `--rm` in the command line above tells Docker to remove the container when you shut down the container.
+Any edits you make to the notebook will be lost.
+If you want to save your changes,
+the best choice is to use the File->Download option from within the notebook.
+Alternatively, you could explicitly make a snapshot of the container with
+[`docker commit`](https://docs.docker.com/engine/reference/commandline/commit/).
+You could run `docker` without the `--rm` option,
+but you will need to clean up extra containers manually to keep from filling up your hard disk.
 
 ## Caveats (TODOs)
 
