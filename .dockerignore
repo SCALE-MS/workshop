@@ -1,2 +1,6 @@
 .idea
-.git
+# TODO: exclude .git when we have a better way of establishing the version
+#.git
+**/*.egg-info
+**/build
+**/dist

@@ -6,7 +6,12 @@
 # RADICAL Pilot client and execution environment.
 #
 # Summary:
-#     docker build -t scalems/example-complete -f example-complete.dockerfile .
+#     docker run --rm -ti -u rp scalems/example-complete bash -c '. rp-venv/bin/activate; \
+#          mkdir -p exercise1 && cd exercise1 && mpiexec -n 2 `which python` -m mpi4py \
+#          ~/scalems-workshop/examples/basic_ensemble/basic_ensemble.py --maxh 0.001 && find .'
+#
+# To build and use the all-in-one container for SCALE-MS on RADICAL Pilot:
+#     docker build -t scalems/example-complete -f example-complete.dockerfile ..
 #        # or
 #     docker pull scalems/example-complete
 #        # then
@@ -33,7 +38,7 @@
 # Updating Docker Hub
 #
 # To build multi-architecture images, use `buildx`:
-#     docker buildx build --platform linux/arm64/v8,linux/amd64 -t scalems/example-complete -f example-complete.dockerfile --push .
+#     docker buildx build --platform linux/arm64/v8,linux/amd64 -t scalems/example-complete -f example-complete.dockerfile --push ..
 # See also:
 #  * https://docs.docker.com/desktop/multi-arch/
 #  * https://docs.docker.com/buildx/working-with-buildx/
@@ -96,7 +101,15 @@ ARG GMXAPI_REF="gmxapi"
 RUN . $RPVENV/gromacs/bin/GMXRC && $RPVENV/bin/pip install $GMXAPI_REF
 
 # Use a custom definition of `local.localhost`.
-COPY --chown=rp:radical resource_local.json /home/rp/.radical/pilot/configs/resource_local.json
+COPY --chown=rp:radical docker/resource_local.json /home/rp/.radical/pilot/configs/resource_local.json
+
+# Update workshop material.
+COPY --chown=rp:radical . /home/rp/scalems-workshop
+
+# Update workshop environment.
+# TODO: Install workshop package from cloud or source archive.
+COPY --chown=rp:radical .git /home/rp/scalems-workshop/.git
+RUN $RPVENV/bin/pip install /home/rp/scalems-workshop
 
 # Restore the user for the default entry point (the mongodb server)
 USER mongodb
