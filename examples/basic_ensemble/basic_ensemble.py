@@ -37,7 +37,7 @@ parser.add_argument(
 parser.add_argument(
     '--inputs',
     type=Path,
-    default=Path(__file__).parent.parent.parent.resolve() / 'input_files' / 'fs-peptide',
+    default=Path(__file__).resolve().parent.parent.parent / 'input_files' / 'fs-peptide',
     help='Directory containing fs-peptide input files.'
 )
 
@@ -108,16 +108,21 @@ if __name__ == '__main__':
         comm_size = 1
         rank_tag = ''
         MPI = None
-    else:
-        rank_tag = 'rank{}:'.format(rank_number)
+    # else:
+    #     rank_tag = 'rank{}:'.format(rank_number)
 
     # Update the logging output.
-    log_format = '%(levelname)s %(name)s:%(filename)s:%(lineno)s %(rank_tag)s%(message)s'
+    # The `rank_tag` definition is provided by gmxapi
+    # log_format = '%(levelname)s %(name)s:%(filename)s:%(lineno)s %(rank_tag)s%(message)s'
+    log_format = '%(levelname)s %(name)s:%(filename)s:%(lineno)s %(message)s'
     for handler in logging.getLogger().handlers:
         handler.setFormatter(logging.Formatter(log_format))
 
     # Handle command line invocation.
     args = parser.parse_args()
+
+    if rank_number == 0:
+        logging.info(f'Input directory set to {args.inputs}.')
 
     allocation_size = args.cores
     try:

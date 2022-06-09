@@ -35,7 +35,7 @@ parser.add_argument(
 parser.add_argument(
     '--inputs',
     type=Path,
-    default=Path(__file__).parent.parent.parent.resolve() / 'input_files' / 'fs-peptide',
+    default=Path(__file__).resolve().parent.parent.parent / 'input_files' / 'fs-peptide',
     help='Directory containing fs-peptide input files.'
 )
 parser.add_argument(
