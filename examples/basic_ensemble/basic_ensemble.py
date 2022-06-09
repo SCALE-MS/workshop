@@ -17,6 +17,8 @@ import logging
 import os
 from pathlib import Path
 
+import scalems_workshop as scalems
+
 # Configure logging module before importing tools that use it.
 logging.basicConfig(level=logging.INFO)
 
@@ -59,35 +61,27 @@ def main(*, input_dir: Path, maxh: float, ensemble_size: int, threads_per_rank: 
     """
     import gmxapi as gmx
 
-    args = ['pdb2gmx', '-ff', 'amber99sb-ildn', '-water', 'tip3p']
-    input_files = {'-f': os.path.join(input_dir, 'start0.pdb')}
-    output_files = {
-            '-p': 'topol.top',
-            '-i': 'posre.itp',
-            '-o': 'conf.gro'}
-    make_top = gmx.commandline_operation('gmx', args, input_files, output_files)
-
-    # Optionally, confirm inputs exist:
-    # make_top.run()
-    # assert os.path.exists(make_top.output.file['-o'].result())
-    # assert os.path.exists(make_top.output.file['-p'].result())
-
-    cmd_dir = input_dir
-    assert os.path.exists(input_dir / 'grompp.mdp')
-
-    # Figure 1b code.
-    grompp_input_files = {'-f': os.path.join(cmd_dir, 'grompp.mdp'),
-                          '-c': make_top.output.file['-o'],
-                          '-p': make_top.output.file['-p']}
+    commandline = [
+        'pdb2gmx', '-ff', 'amber99sb-ildn', '-water', 'tip3p',
+        '-f', os.path.join(input_dir, 'start0.pdb'),
+        '-p', scalems.output_file('topol.top'),
+        '-i', scalems.output_file('posre.itp'),
+        '-o', scalems.output_file('conf.gro')
+    ]
+    make_top = scalems.executable(commandline)
 
     # make array of inputs
-    N = ensemble_size
-    grompp = gmx.commandline_operation(
-        'gmx',
-        ['grompp'],
-        input_files=[grompp_input_files] * N,
-        output_files={'-o': 'run.tpr'})
-    tpr_input = grompp.output.file['-o'].result()
+    commandline = [
+        gmx.commandline.cli_executable(),
+        'grompp',
+        '-f', os.path.join(input_dir, 'grompp.mdp'),
+        '-c', make_top.output_file['conf.gro'],
+        '-p', make_top.output_file['topol.top'],
+        '-o', scalems.output_file('run.tpr', name='simulation_input')
+    ]
+    grompp = scalems.executable(commandline * ensemble_size)
+
+    tpr_input = grompp.output_file['simulation_input']
 
     input_list = gmx.read_tpr(tpr_input)
 
