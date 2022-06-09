@@ -8,7 +8,7 @@ For the trajectory ensemble, use ``mpiexec`` and ``mpi4py``.
 For example, for an ensemble of size 50, activate your gmxapi Python virtual
 environment and run::
 
-    mpiexec -n 50 `which python` -m mpi4py fs-peptide.py --cores 50
+    mpiexec -n 50 `which python` -m mpi4py basic_example.py --cores 50
 
 """
 
@@ -43,13 +43,16 @@ parser.add_argument(
 
 
 def main(*, input_dir: Path, maxh: float, ensemble_size: int, threads_per_rank: int):
-    """Figure 1b: gmxapi command on ensemble input
+    """Gromacs simulation on ensemble input
 
     Call the GROMACS MD preprocessor to create a simulation input file. Declare an
     ensemble simulation workflow starting from the single input file.
 
     Args:
-        make_top operation handle, as generated in `figure1a`
+        input_dir: path to the fs-peptide input files
+        maxh: maximum wall time for the simulations
+        ensemble_size: number of independent trajectories
+        threads_per_rank: CPU threads per simulation ('-nt' argument)
 
     Returns:
         Trajectory output. (list, if ensemble simulation)
@@ -91,10 +94,7 @@ def main(*, input_dir: Path, maxh: float, ensemble_size: int, threads_per_rank: 
     md = gmx.mdrun(input_list, runtime_args={'-maxh': str(maxh), '-nt': str(threads_per_rank)})
     md.run()
 
-    return {
-        'input_list': input_list,
-        'trajectory': md.output.trajectory.result()
-    }
+    return md.output.trajectory.result()
 
 
 if __name__ == '__main__':

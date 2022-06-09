@@ -27,11 +27,10 @@ for handler in logging.getLogger().handlers:
 
 
 def make_top(*, input_dir):
-    """Figure 1a: gmxapi command-line operation.
+    """Wrapped command-line operation to provide topology.
 
     Prepare a molecular model from a PDB file using the `pdb2gmx` GROMACS tool.
     """
-    # Figure 1a code
     args = ['pdb2gmx', '-ff', 'amber99sb-ildn', '-water', 'tip3p']
     input_files = {'-f': os.path.join(input_dir, 'start0.pdb')}
     output_files = {
@@ -44,16 +43,18 @@ def make_top(*, input_dir):
 
 
 def make_simulation_input(*, topology, ensemble_size, input_dir):
-    """Figure 1b: gmxapi command on ensemble input
+    """Set up the ensemble simulation input.
 
     Call the GROMACS MD preprocessor to create a simulation input file. Declare an
     ensemble simulation workflow starting from the single input file.
 
     Args:
-        make_top operation handle, as generated in `make_top`
+        topology: handle to the topology creation operation (pdb2gmx)
+        ensemble_size: number of simulation inputs
+        input_dir: path to fs-peptide input files
 
     Returns:
-        Trajectory output. (list, if ensemble simulation)
+        Handle to the ensemble simulation input.
     """
     cmd_dir = input_dir
     assert os.path.exists(input_dir / 'grompp.mdp')
@@ -78,8 +79,19 @@ def make_simulation_input(*, topology, ensemble_size, input_dir):
     return input_list
 
 
-def fold(input_list, *, maxh: float, threads_per_rank: int, reference_struct: Path, max_iterations: int):
-    """Looping and custom operations."""
+def fold(simulation_input, *, maxh: float, threads_per_rank: int, reference_struct: Path, max_iterations: int):
+    """Simulation-analysis loop finds the first ensemble member to fold the input molecule.
+
+    Args:
+        simulation_input: ensemble simulation input handle
+        maxh: maximum wall time for each simulation iteration
+        threads_per_rank: CPU threads per simulation ('-nt' argument)
+        reference_struct: structure (PDB file path) identifying the folded state.
+        max_iterations: maximum number of iterations to perform in the simulation-analysis loop
+
+    Returns:
+        Handle to the (completed) while_loop operation.
+    """
     subgraph = gmx.subgraph(
         variables={
             'found_native': False,
@@ -88,7 +100,7 @@ def fold(input_list, *, maxh: float, threads_per_rank: int, reference_struct: Pa
         })
     with subgraph:
         md = gmx.mdrun(
-            input_list,
+            simulation_input,
             runtime_args={
                 '-cpi': subgraph.checkpoint,
                 '-maxh': str(maxh),
