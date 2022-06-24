@@ -132,4 +132,15 @@ if __name__ == '__main__':
         threads_per_rank = min(local_cpu_set_size, allocation_size // comm_size)
 
     # Call the main work.
-    main(input_dir=args.inputs, maxh=args.maxh, ensemble_size=comm_size, threads_per_rank=threads_per_rank)
+    trajectory = main(
+        input_dir=args.inputs,
+        maxh=args.maxh,
+        ensemble_size=comm_size,
+        threads_per_rank=threads_per_rank)
+
+    if not isinstance(trajectory, list):
+        trajectory = [trajectory]
+
+    if rank_number == 0:
+        for i, out in enumerate(trajectory):
+            print(f'Trajectory {i}: {out}')

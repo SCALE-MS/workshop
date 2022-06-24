@@ -32,3 +32,14 @@ sleep 3
 docker exec -ti -u rp scalems_test bash -c '. rp-venv/bin/activate && python -m scalems.radical --resource=local.localhost --venv $VIRTUAL_ENV --log-level debug scalems/examples/basic/echo.py hi there && cat 0*0/stdout'
 docker stop scalems_test
 ```
+
+### Example 01
+
+Run a simulation or array of simulations from a script.
+
+```shell
+docker build -t scalems/example-complete -f example-complete.dockerfile ..
+docker run --rm -ti -u rp scalems/example-complete bash -c \
+'. rp-venv/bin/activate; mkdir exercise1 && cd exercise1 && mpiexec -n 2 `which python` -m mpi4py ~/scalems-workshop/examples/basic_ensemble/basic_ensemble.py --maxh 0.001'
+
+```
