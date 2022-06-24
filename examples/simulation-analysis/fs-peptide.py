@@ -60,10 +60,9 @@ def main(*, input_dir: Path, maxh: float, threads_per_rank: int, ensemble_size: 
     topology_source = make_top(input_dir=input_dir)
     logging.info('Created a handle to a commandline operation.')
 
-    simulation_input = make_simulation_input(
-        topology=topology_source,
-        ensemble_size=ensemble_size,
-        input_dir=input_dir)
+    simulation_input = make_simulation_input(topology_source=topology_source,
+                                             ensemble_size=ensemble_size,
+                                             input_dir=input_dir)
     assert simulation_input.output.ensemble_width == ensemble_size
 
     folding_loop = fold(simulation_input,

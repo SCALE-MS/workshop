@@ -255,7 +255,7 @@ def _parse_argv(argv: Sequence[typing.Union[str, Future[str], PlaceHolder[str]]]
     )
 
 
-CommandLineArgvType = Sequence[typing.Union[str, Future[str], PlaceHolder[str]]]
+CommandLineArgvType = Sequence[typing.Union[str, pathlib.Path, Future[str], PlaceHolder[str]]]
 
 
 def executable(argv: typing.Union[CommandLineArgvType, Sequence[CommandLineArgvType]], *,
