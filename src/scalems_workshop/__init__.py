@@ -8,6 +8,7 @@ __all__ = ['__version__', 'executable', 'less_than', 'numeric_min', 'output_file
 import collections.abc
 import logging
 import os
+import pathlib
 import typing
 from dataclasses import dataclass, field
 from importlib.metadata import version
@@ -65,6 +66,34 @@ class OutputFilePlaceholder(PlaceHolder[str]):
     # where needed.
 
 
+class _MonotonicInteger:
+    __value = -1
+
+    @staticmethod
+    def get():
+        _MonotonicInteger.__value += 1
+        return _MonotonicInteger.__value
+
+
+def _get_path(placeholder: OutputFilePlaceholder) -> str:
+    """
+
+    Returns:
+        str: an appropriate filename
+    """
+    if placeholder.filename:
+        path: str = placeholder.filename
+    else:
+        if placeholder.label:
+            path = placeholder.label
+        else:
+            path = 'output'
+        path += str(_MonotonicInteger.get())
+        if placeholder.suffix:
+            path += placeholder.suffix
+    return path
+
+
 def output_file(filename: typing.Union[str, Future] = None, *,
                 label: str = None, suffix: str = None):
     """Declare an output file.
@@ -103,8 +132,9 @@ def output_file(filename: typing.Union[str, Future] = None, *,
 class _ParsedArgs:
     executable: str
     arguments: typing.List[str] = field(default_factory=list)
-    input_files: dict = field(default_factory=dict)
-    output_files: dict = field(default_factory=dict)
+    input_files: typing.Dict[str, typing.Union[Future[str], str]] \
+        = field(default_factory=dict)
+    output_files: typing.Dict[str, str] = field(default_factory=dict)
 
 
 _test_parsed_args = _ParsedArgs(executable='')
@@ -114,55 +144,73 @@ assert set(_test_parsed_args.output_files.keys()) == set()
 
 
 def _parse_argv(argv: Sequence[typing.Union[str, Future[str], PlaceHolder[str]]]):
+    """Process a sequence into positional arguments and I/O flag mappings.
+
+    Bare strings are either positional arguments or input/output flags.
+
+    Input flags are followed by one or more Future arguments, which establish
+    data flow dependencies.
+
+    Output flags are followed by one or more placeholders to establish named
+    outputs for the task.
+    """
     # For gmxapi.commandline_operation, positional arguments must come before input/output
     # file arguments.
     if isinstance(argv, (str, bytes)) or not isinstance(argv, collections.abc.Sequence) or len(argv) == 0:
         raise TypeError('argv must be the array of command line arguments (including the executable).')
     num_args = len(argv)
-    executable = argv[0]
+    executable = str(argv[0])
 
     if num_args == 1:
         return _ParsedArgs(executable=executable)
 
-    arguments = []
-
+    # Gather positional arguments.
+    assert num_args > 1
     previous_arg = argv[1]
-    if not isinstance(previous_arg, str):
+    if not isinstance(previous_arg, (str, pathlib.Path)):
         raise ValueError(
             'Unsupported command line syntax. Basic strings must be used for positional arguments. '
             'Input and output files must be provided with a "flag" argument for identification.')
-
-    input_files = {}
-    output_files = {}
+    arguments = []
+    input_files: typing.Dict[str, typing.Union[Future[str], str]] = {}
+    output_files: typing.Dict[str, str] = {}
     flag: Optional[str] = None
     i = 1
+    # Scan for input/output flags by looking for non-string flag arguments.
     for i, arg in enumerate(argv[2:], start=2):
-        if isinstance(arg, str):
-            arguments.append(previous_arg)
+        if isinstance(arg, (str, pathlib.Path)):
+            arguments.append(str(previous_arg))
             previous_arg = arg
         elif isinstance(arg, gmxapi.abc.Future):
             flag = previous_arg
-            input_files[flag] = [arg]
+            input_files[flag] = arg
             break
         elif isinstance(arg, OutputFilePlaceholder):
             flag = previous_arg
-            output_files[flag] = [arg]
+            output_files[flag] = _get_path(arg)
             break
         else:
             raise ValueError(f'Invalid element in argv: {repr(arg)}')
 
     if flag is None:
+        # No non-positional arguments found. Handle the final argument and return.
         arguments.append(previous_arg)
         return _ParsedArgs(executable=executable, arguments=arguments)
+    else:
+        # input/output arguments found. argv[i-1] is a flag and argv[i] was its
+        # (first) argument.
+        previous_arg = argv[i]
 
+    # Extend the first I/O flag (discovered above), if necessary,
+    # and gather any remaining I/O flags and file arguments.
     for arg in argv[i+1:]:
-        if isinstance(arg, str) and isinstance(previous_arg, str):
-                raise ValueError(f'Arguments {repr(previous_arg)} and {repr(arg)} appeared in sequence '
-                                 f'where input/output flags and arguments are expected.')
-        else:
-            previous_arg = arg
-
         if isinstance(arg, str):
+            # Check for empty file lists before discarding the previous flag.
+            if isinstance(previous_arg, str):
+                assert previous_arg is flag
+                raise ValueError(
+                    f'Flags {repr(previous_arg)} and {repr(arg)} appeared in sequence '
+                    f'where input/output flags and arguments are expected.')
             # We don't know yet whether it is an input or output flag.
             # We will infer on a later iteration from its argument type.
             flag = arg
@@ -170,20 +218,31 @@ def _parse_argv(argv: Sequence[typing.Union[str, Future[str], PlaceHolder[str]]]
                 raise ValueError(f'Duplicated input/output file flags not supported: {flag}')
         elif isinstance(arg, OutputFilePlaceholder):
             if flag in input_files:
-                raise ValueError(f'Output file provided to {flag}, but {flag} is an input file flag.')
-            if flag not in output_files:
-                output_files[flag] = []
-            # TODO: Convert to appropriate string!!!
-            output_files[flag].append(arg)
+                raise ValueError(f'Output file {arg} provided to {flag}, but {flag} is an input file flag.')
+            # gmxapi.commandline_operation currently requires one filename per flag.
+            # if flag not in output_files:
+            #     output_files[flag] = []
+            # output_files[flag].append(_get_path(arg))
+            if flag in output_files:
+                raise ValueError(f'Output file {arg} provided to {flag}, but {flag} is already set to '
+                                 f'{output_files[flag]}.')
+            else:
+                output_files[flag] = _get_path(arg)
         elif isinstance(arg, gmxapi.abc.Future):
             if flag in output_files:
                 raise ValueError(f'Input file provided to {flag}, but {flag} is an output file flag.')
-            if flag not in input_files:
-                input_files[flag] = []
-            # TODO: Convert to appropriate string!!!
-            input_files[flag].append(arg)
+            # gmxapi.commandline_operation currently requires one filename per flag.
+            # if flag not in input_files:
+            #     input_files[flag] = []
+            # input_files[flag].append(arg)
+            if flag in input_files:
+                raise ValueError(f'Input file {arg} provided to {flag}, but {flag} is already set to '
+                                 f'{input_files[flag]}.')
+            else:
+                input_files[flag] = arg
         else:
             raise ValueError(f'Cannot process input/output file argument {repr(arg)}.')
+        previous_arg = arg
 
     if flag is previous_arg:
         raise ValueError(f'Got flag {flag} with no arguments.')
@@ -196,7 +255,10 @@ def _parse_argv(argv: Sequence[typing.Union[str, Future[str], PlaceHolder[str]]]
     )
 
 
-def executable(argv: Sequence[typing.Union[str, Future[str], PlaceHolder[str]]], *,
+CommandLineArgvType = Sequence[typing.Union[str, Future[str], PlaceHolder[str]]]
+
+
+def executable(argv: typing.Union[CommandLineArgvType, Sequence[CommandLineArgvType]], *,
                resources: Optional[SupportsEnsemble[dict]] = None,
                inputs: Optional[SupportsEnsemble[Sequence]] = None,
                outputs: Optional[SupportsEnsemble[Sequence]] = None,

@@ -62,7 +62,7 @@ def main(*, input_dir: Path, maxh: float, ensemble_size: int, threads_per_rank: 
     import gmxapi as gmx
 
     commandline = [
-        'pdb2gmx', '-ff', 'amber99sb-ildn', '-water', 'tip3p',
+        gmx.commandline.cli_executable(), 'pdb2gmx', '-ff', 'amber99sb-ildn', '-water', 'tip3p',
         '-f', os.path.join(input_dir, 'start0.pdb'),
         '-p', scalems.output_file('topol.top'),
         '-i', scalems.output_file('posre.itp'),
@@ -82,7 +82,7 @@ def main(*, input_dir: Path, maxh: float, ensemble_size: int, threads_per_rank: 
         '-p', make_top.output.file['-p'],
         '-o', scalems.output_file('run.tpr', label='simulation_input')
     ]
-    grompp = scalems.executable(commandline * ensemble_size)
+    grompp = scalems.executable([commandline] * ensemble_size)
 
     # TODO: executable task output proxy
     # tpr_input = grompp.output_file['simulation_input']
