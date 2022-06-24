@@ -17,11 +17,6 @@ import logging
 import os
 from pathlib import Path
 
-import scalems_workshop as scalems
-
-# Configure logging module before importing tools that use it.
-logging.basicConfig(level=logging.INFO)
-
 # Set up a command line argument processor for our script.
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -42,7 +37,12 @@ parser.add_argument(
     default=Path(__file__).resolve().parent.parent.parent / 'input_files' / 'fs-peptide',
     help='Directory containing fs-peptide input files.'
 )
-
+parser.add_argument(
+    '--log-level',
+    default='ERROR',
+    help='Minimum log level to handle for the Python "logging" module. (See '
+         'https://docs.python.org/3/library/logging.html#logging-levels)'
+)
 
 def main(*, input_dir: Path, maxh: float, ensemble_size: int, threads_per_rank: int):
     """Gromacs simulation on ensemble input
@@ -60,6 +60,7 @@ def main(*, input_dir: Path, maxh: float, ensemble_size: int, threads_per_rank: 
         Trajectory output. (list, if ensemble simulation)
     """
     import gmxapi as gmx
+    import scalems_workshop as scalems
 
     commandline = [
         gmx.commandline.cli_executable(), 'pdb2gmx', '-ff', 'amber99sb-ildn', '-water', 'tip3p',
@@ -110,15 +111,18 @@ if __name__ == '__main__':
     # else:
     #     rank_tag = 'rank{}:'.format(rank_number)
 
+    # Handle command line invocation.
+    args = parser.parse_args()
+
+    # Configure logging module before importing tools that use it.
+    logging.basicConfig(level=str(args.log_level).upper())
+
     # Update the logging output.
     # The `rank_tag` definition is provided by gmxapi
     # log_format = '%(levelname)s %(name)s:%(filename)s:%(lineno)s %(rank_tag)s%(message)s'
     log_format = '%(levelname)s %(name)s:%(filename)s:%(lineno)s %(message)s'
     for handler in logging.getLogger().handlers:
         handler.setFormatter(logging.Formatter(log_format))
-
-    # Handle command line invocation.
-    args = parser.parse_args()
 
     if rank_number == 0:
         logging.info(f'Input directory set to {args.inputs}.')

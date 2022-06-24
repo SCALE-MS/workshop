@@ -13,11 +13,6 @@ import logging
 import os
 from pathlib import Path
 
-# Configure logging module before importing tools that use it.
-logging.basicConfig(level=logging.INFO)
-
-from fold import make_top, make_simulation_input, fold
-
 # Set up a command line argument processor for our script.
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -44,10 +39,18 @@ parser.add_argument(
     default=10,
     help='Maximum number of iterations for the simulation-analysis loop.'
 )
+parser.add_argument(
+    '--log-level',
+    default='ERROR',
+    help='Minimum log level to handle for the Python "logging" module. (See '
+         'https://docs.python.org/3/library/logging.html#logging-levels)'
+)
 
 
 def main(*, input_dir: Path, maxh: float, threads_per_rank: int, ensemble_size: int, max_iterations: int):
     """Define the main work for this script."""
+
+    from fold import make_top, make_simulation_input, fold
 
     # Confirm inputs exist
     if not all(p.exists() for p in (input_dir, input_dir / 'start0.pdb', input_dir / 'ref.pdb')):
@@ -84,14 +87,16 @@ if __name__ == '__main__':
         MPI = None
     else:
         rank_tag = 'rank{}:'.format(rank_number)
+    # Handle command line invocation.
+    args = parser.parse_args()
+
+    # Configure logging module before importing tools that use it.
+    logging.basicConfig(level=str(args.log_level).upper())
 
     # Update the logging output.
     log_format = '%(levelname)s %(name)s:%(filename)s:%(lineno)s %(rank_tag)s%(message)s'
     for handler in logging.getLogger().handlers:
         handler.setFormatter(logging.Formatter(log_format))
-
-    # Handle command line invocation.
-    args = parser.parse_args()
 
     allocation_size = args.cores
     try:
