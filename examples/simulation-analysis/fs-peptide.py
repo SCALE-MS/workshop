@@ -71,7 +71,8 @@ def main(*, input_dir: Path, maxh: float, threads_per_rank: int, ensemble_size: 
                         max_iterations=max_iterations,
                         threads_per_rank=threads_per_rank,
                         reference_struct=reference_struct)
-    return folding_loop.run()
+    folding_loop.run()
+    return folding_loop
 
 
 if __name__ == '__main__':
@@ -107,5 +108,31 @@ if __name__ == '__main__':
         threads_per_rank = min(local_cpu_set_size, allocation_size // comm_size)
 
     # Call the main work.
-    main(input_dir=args.inputs, maxh=args.maxh, ensemble_size=comm_size, threads_per_rank=threads_per_rank,
-         max_iterations=args.max_iterations)
+    folding_loop = main(
+        input_dir=args.inputs,
+        maxh=args.maxh,
+        ensemble_size=comm_size,
+        threads_per_rank=threads_per_rank,
+        max_iterations=args.max_iterations)
+
+    found_native = folding_loop.output.found_native.result()
+    min_rms = folding_loop.output.min_rms.result()
+    logging.debug(f'found_native: {found_native}')
+    logging.debug(f'min_rms: {min_rms}')
+
+    if comm_size > 1:
+        assert isinstance(found_native, list)
+        found_native = any(found_native)
+        assert isinstance(min_rms, list)
+        min_rms = min(min_rms)
+    else:
+        assert comm_size == 1
+        assert isinstance(found_native, bool)
+        assert isinstance(min_rms, float)
+
+    if rank_number == 0:
+        if found_native:
+            print('Found native conformation, according to convergence condition.')
+        else:
+            print('No trajectories converged on the target conformation.')
+        print(f'Minimum rms difference from target structure: {min_rms}')
