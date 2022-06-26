@@ -17,9 +17,6 @@ import logging
 import os
 from pathlib import Path
 
-# Configure logging module before importing tools that use it.
-logging.basicConfig(level=logging.INFO)
-
 # Set up a command line argument processor for our script.
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -40,7 +37,12 @@ parser.add_argument(
     default=Path(__file__).resolve().parent.parent.parent / 'input_files' / 'fs-peptide',
     help='Directory containing fs-peptide input files.'
 )
-
+parser.add_argument(
+    '--log-level',
+    default='ERROR',
+    help='Minimum log level to handle for the Python "logging" module. (See '
+         'https://docs.python.org/3/library/logging.html#logging-levels)'
+)
 
 def main(*, input_dir: Path, maxh: float, ensemble_size: int, threads_per_rank: int):
     """Gromacs simulation on ensemble input
@@ -58,36 +60,34 @@ def main(*, input_dir: Path, maxh: float, ensemble_size: int, threads_per_rank: 
         Trajectory output. (list, if ensemble simulation)
     """
     import gmxapi as gmx
+    import scalems_workshop as scalems
 
-    args = ['pdb2gmx', '-ff', 'amber99sb-ildn', '-water', 'tip3p']
-    input_files = {'-f': os.path.join(input_dir, 'start0.pdb')}
-    output_files = {
-            '-p': 'topol.top',
-            '-i': 'posre.itp',
-            '-o': 'conf.gro'}
-    make_top = gmx.commandline_operation('gmx', args, input_files, output_files)
-
-    # Optionally, confirm inputs exist:
-    # make_top.run()
-    # assert os.path.exists(make_top.output.file['-o'].result())
-    # assert os.path.exists(make_top.output.file['-p'].result())
-
-    cmd_dir = input_dir
-    assert os.path.exists(input_dir / 'grompp.mdp')
-
-    # Figure 1b code.
-    grompp_input_files = {'-f': os.path.join(cmd_dir, 'grompp.mdp'),
-                          '-c': make_top.output.file['-o'],
-                          '-p': make_top.output.file['-p']}
+    commandline = [
+        gmx.commandline.cli_executable(), 'pdb2gmx', '-ff', 'amber99sb-ildn', '-water', 'tip3p',
+        '-f', os.path.join(input_dir, 'start0.pdb'),
+        '-p', scalems.output_file('topol.top'),
+        '-i', scalems.output_file('posre.itp'),
+        '-o', scalems.output_file('conf.gro')
+    ]
+    make_top = scalems.executable(commandline)
 
     # make array of inputs
-    N = ensemble_size
-    grompp = gmx.commandline_operation(
-        'gmx',
-        ['grompp'],
-        input_files=[grompp_input_files] * N,
-        output_files={'-o': 'run.tpr'})
-    tpr_input = grompp.output.file['-o'].result()
+    commandline = [
+        gmx.commandline.cli_executable(),
+        'grompp',
+        '-f', os.path.join(input_dir, 'grompp.mdp'),
+        # TODO: executable task output proxy
+        # '-c', make_top.output_file['conf.gro'],
+        # '-p', make_top.output_file['topol.top'],
+        '-c', make_top.output.file['-o'],
+        '-p', make_top.output.file['-p'],
+        '-o', scalems.output_file('run.tpr', label='simulation_input')
+    ]
+    grompp = scalems.executable([commandline] * ensemble_size)
+
+    # TODO: executable task output proxy
+    # tpr_input = grompp.output_file['simulation_input']
+    tpr_input = grompp.output.file['-o']
 
     input_list = gmx.read_tpr(tpr_input)
 
@@ -111,15 +111,18 @@ if __name__ == '__main__':
     # else:
     #     rank_tag = 'rank{}:'.format(rank_number)
 
+    # Handle command line invocation.
+    args = parser.parse_args()
+
+    # Configure logging module before importing tools that use it.
+    logging.basicConfig(level=str(args.log_level).upper())
+
     # Update the logging output.
     # The `rank_tag` definition is provided by gmxapi
     # log_format = '%(levelname)s %(name)s:%(filename)s:%(lineno)s %(rank_tag)s%(message)s'
     log_format = '%(levelname)s %(name)s:%(filename)s:%(lineno)s %(message)s'
     for handler in logging.getLogger().handlers:
         handler.setFormatter(logging.Formatter(log_format))
-
-    # Handle command line invocation.
-    args = parser.parse_args()
 
     if rank_number == 0:
         logging.info(f'Input directory set to {args.inputs}.')
@@ -133,4 +136,15 @@ if __name__ == '__main__':
         threads_per_rank = min(local_cpu_set_size, allocation_size // comm_size)
 
     # Call the main work.
-    main(input_dir=args.inputs, maxh=args.maxh, ensemble_size=comm_size, threads_per_rank=threads_per_rank)
+    trajectory = main(
+        input_dir=args.inputs,
+        maxh=args.maxh,
+        ensemble_size=comm_size,
+        threads_per_rank=threads_per_rank)
+
+    if not isinstance(trajectory, list):
+        trajectory = [trajectory]
+
+    if rank_number == 0:
+        for i, out in enumerate(trajectory):
+            print(f'Trajectory {i}: {out}')

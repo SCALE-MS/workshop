@@ -12,7 +12,7 @@ from pathlib import Path
 logging.basicConfig(level=logging.INFO)
 
 import gmxapi as gmx
-
+import scalems_workshop as scalems
 from scalems_workshop import numeric_min, xvg_to_array, less_than
 
 logging.info(f'gmxapi Python package version {gmx.__version__}')
@@ -31,25 +31,26 @@ def make_top(*, input_dir):
 
     Prepare a molecular model from a PDB file using the `pdb2gmx` GROMACS tool.
     """
-    args = ['pdb2gmx', '-ff', 'amber99sb-ildn', '-water', 'tip3p']
-    input_files = {'-f': os.path.join(input_dir, 'start0.pdb')}
-    output_files = {
-        '-p': 'topol.top',
-        '-i': 'posre.itp',
-        '-o': 'conf.gro'
-    }
-    topology = gmx.commandline_operation('gmx', args, input_files, output_files)
+    commandline = [
+        gmx.commandline.cli_executable(),
+        'pdb2gmx', '-ff', 'amber99sb-ildn', '-water', 'tip3p',
+        '-f', os.path.join(input_dir, 'start0.pdb'),
+        '-p', scalems.output_file(label='topology', suffix='.top'),
+        '-i', scalems.output_file(label='restraints', suffix='.itp'),
+        '-o', scalems.output_file(label='conformation', suffix='.gro')
+    ]
+    topology = scalems.executable(commandline)
     return topology
 
 
-def make_simulation_input(*, topology, ensemble_size, input_dir):
+def make_simulation_input(*, topology_source, ensemble_size, input_dir):
     """Set up the ensemble simulation input.
 
     Call the GROMACS MD preprocessor to create a simulation input file. Declare an
     ensemble simulation workflow starting from the single input file.
 
     Args:
-        topology: handle to the topology creation operation (pdb2gmx)
+        topology_source: handle to the topology creation operation (pdb2gmx)
         ensemble_size: number of simulation inputs
         input_dir: path to fs-peptide input files
 
@@ -58,22 +59,23 @@ def make_simulation_input(*, topology, ensemble_size, input_dir):
     """
     cmd_dir = input_dir
     assert os.path.exists(input_dir / 'grompp.mdp')
+    parameters = os.path.join(cmd_dir, 'grompp.mdp')
 
-    # Figure 1b code.
-    grompp_input_files = {
-        '-f': os.path.join(cmd_dir, 'grompp.mdp'),
-        '-c': topology.output.file['-o'],
-        '-p': topology.output.file['-p']
-    }
+    topology = topology_source.output.file['-p']
+    conformation = topology_source.output.file['-o']
+
+    commandline = [
+        gmx.commandline.cli_executable(), 'grompp',
+        '-f', parameters,
+        '-c', conformation,
+        '-p', topology,
+        '-o', scalems.output_file(label='simulation_input', suffix='.tpr')
+    ]
 
     # make array of inputs
     N = ensemble_size
-    grompp = gmx.commandline_operation(
-        'gmx',
-        ['grompp'],
-        input_files=[grompp_input_files] * N,
-        output_files={'-o': 'run.tpr'})
-    tpr_input = grompp.output.file['-o'].result()
+    grompp = scalems.executable([commandline] * N)
+    tpr_input = grompp.output.file['-o']
 
     input_list = gmx.read_tpr(tpr_input)
     return input_list
