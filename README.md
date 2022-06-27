@@ -53,13 +53,21 @@ or pull `scalems/example-complete` from
 
 First, install GROMACS 2022, create a Python virtual environment, and install the `gmxapi` Python package (see above))
 
+0. Clone this repository.
+   ```shell
+   git clone https://github.com/SCALE-MS/workshop.git
+   cd workshop
+   ```
 1. Install additional tutorial dependencies in the virtual environment, using the provided [requirements.txt](requirements.txt).
     ```shell
-    $ . /path/to/venv/bin/activate
-    $ pip install -r requirements.txt
+    . /path/to/venv/bin/activate
+    pip install -r requirements.txt
     ```
-2. Install the scalems package.
-3. *TBD*
+2. Install the support package for the workshop.
+   ```shell
+   pip install .
+   ```
+3. Refer to the scripts in `examples/`
 
 ### From Docker
 
