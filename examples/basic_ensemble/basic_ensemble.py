@@ -44,6 +44,7 @@ parser.add_argument(
          'https://docs.python.org/3/library/logging.html#logging-levels)'
 )
 
+
 def main(*, input_dir: Path, maxh: float, ensemble_size: int, threads_per_rank: int):
     """Gromacs simulation on ensemble input
 
@@ -76,18 +77,16 @@ def main(*, input_dir: Path, maxh: float, ensemble_size: int, threads_per_rank: 
         gmx.commandline.cli_executable(),
         'grompp',
         '-f', os.path.join(input_dir, 'grompp.mdp'),
-        # TODO: executable task output proxy
-        # '-c', make_top.output_file['conf.gro'],
-        # '-p', make_top.output_file['topol.top'],
-        '-c', make_top.output.file['-o'],
-        '-p', make_top.output.file['-p'],
+        '-c', make_top.output_file['conf.gro'],
+        '-p', make_top.output_file['topol.top'],
+        # '-c', make_top.output.file['-o'],
+        # '-p', make_top.output.file['-p'],
         '-o', scalems.output_file('run.tpr', label='simulation_input')
     ]
     grompp = scalems.executable([commandline] * ensemble_size)
 
-    # TODO: executable task output proxy
-    # tpr_input = grompp.output_file['simulation_input']
-    tpr_input = grompp.output.file['-o']
+    tpr_input = grompp.output_file['simulation_input']
+    # tpr_input = grompp.output.file['-o']
 
     input_list = gmx.read_tpr(tpr_input)
 
@@ -142,6 +141,7 @@ if __name__ == '__main__':
         ensemble_size=comm_size,
         threads_per_rank=threads_per_rank)
 
+    # Normalize result type, since gmxapi automatically flattens to scalar for shape==(1,)
     if not isinstance(trajectory, list):
         trajectory = [trajectory]
 
