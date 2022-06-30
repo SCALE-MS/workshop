@@ -13,6 +13,8 @@ import logging
 import os
 from pathlib import Path
 
+import gmxapi
+
 # Set up a command line argument processor for our script.
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -105,6 +107,10 @@ if __name__ == '__main__':
         threads_per_rank = allocation_size // comm_size
     else:
         threads_per_rank = min(local_cpu_set_size, allocation_size // comm_size)
+
+    logging.info(f'Requesting {threads_per_rank} threads on rank {rank_number}, based on allocation size '
+                 f'{allocation_size}, comm size {comm_size}, and CPU sets {os.sched_getaffinity(0)} ('
+                 f'length {local_cpu_set_size}).')
 
     # Call the main work.
     folding_loop = main(
