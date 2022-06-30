@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO)
 
 import gmxapi as gmx
 import scalems_workshop as scalems
-from scalems_workshop import numeric_min, xvg_to_array, less_than
+from scalems_workshop import numeric_min, xvg_to_array, less_than, subgraph
 
 logging.info(f'gmxapi Python package version {gmx.__version__}')
 assert gmx.version.has_feature('mdrun_runtime_args')
@@ -61,8 +61,8 @@ def make_simulation_input(*, topology_source, ensemble_size, input_dir):
     assert os.path.exists(input_dir / 'grompp.mdp')
     parameters = os.path.join(cmd_dir, 'grompp.mdp')
 
-    topology = topology_source.output.file['-p']
-    conformation = topology_source.output.file['-o']
+    topology = topology_source.output_file['topology']
+    conformation = topology_source.output_file['conformation']
 
     commandline = [
         gmx.commandline.cli_executable(), 'grompp',
@@ -75,7 +75,7 @@ def make_simulation_input(*, topology_source, ensemble_size, input_dir):
     # make array of inputs
     N = ensemble_size
     grompp = scalems.executable([commandline] * N)
-    tpr_input = grompp.output.file['-o']
+    tpr_input = grompp.output_file['simulation_input']
 
     input_list = gmx.read_tpr(tpr_input)
     return input_list
@@ -94,41 +94,41 @@ def fold(simulation_input, *, maxh: float, threads_per_rank: int, reference_stru
     Returns:
         Handle to the (completed) while_loop operation.
     """
-    subgraph = gmx.subgraph(
-        variables={
-            'found_native': False,
-            'checkpoint': '',
-            'min_rms': 1e6
-        })
-    with subgraph:
-        md = gmx.mdrun(
+    class SimulationAnalysis(subgraph.Subgraph):
+        found_native = subgraph.output_variable(default=False)
+        checkpoint = subgraph.output_variable(default='')
+        min_rms = subgraph.output_variable(default=1e6)
+
+        # Decorate a non-scalems command so that the framework knows to convert
+        # the subgraph variable to native type when calling during iteration.
+        md = subgraph.add(
+            gmx.mdrun,
             simulation_input,
             runtime_args={
-                '-cpi': subgraph.checkpoint,
+                '-cpi': checkpoint.get(),
                 '-maxh': str(maxh),
                 '-noappend': None,
                 '-nt': str(threads_per_rank)
             })
 
-        subgraph.checkpoint = md.output.checkpoint
-        rmsd = gmx.commandline_operation(
-            'gmx', ['rms'],
-            input_files={
-                '-s': reference_struct,
-                '-f': md.output.trajectory
-            },
-            output_files={'-o': 'rmsd.xvg'},
+        # Establish a node (internal data flow), updating a subgraph variable.
+        checkpoint.set(md.output.checkpoint)
+
+        rmsd = scalems.executable(
+            [
+                gmx.commandline.cli_executable(),
+                'rms', '-s', reference_struct, '-f', md.output.trajectory,
+                '-o', scalems.output_file('rmsd.xvg')
+            ],
             stdin='Backbone Backbone\n'
         )
-        subgraph.min_rms = numeric_min(
-            xvg_to_array(rmsd.output.file['-o']).output.data).output.data
-        subgraph.found_native = less_than(lhs=subgraph.min_rms, rhs=0.3).output.data
 
-    folding_loop = gmx.while_loop(
-        operation=subgraph,
-        condition=gmx.logical_not(subgraph.found_native),
-        max_iteration=max_iterations
-    )()
+        min_rms.set(numeric_min(xvg_to_array(rmsd.output_file['data'])))
+        found_native.set(less_than(lhs=min_rms.get(), rhs=0.3))
+
+    folding_loop = scalems.while_loop(operation=SimulationAnalysis,
+                                      condition=scalems.logical_not(SimulationAnalysis.found_native),
+                                      max_iteration=max_iterations)()
     logging.info('Beginning folding_loop.')
     folding_loop.run()
     logging.info(f'Finished folding_loop. min_rms: {folding_loop.output.min_rms.result()}')

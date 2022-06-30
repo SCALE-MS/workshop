@@ -32,28 +32,6 @@ class _ParsedArgs:
     output_files: typing.Dict[str, str] = field(default_factory=dict)
 
 
-# class GmxapiResourceManager(gmxapi.operation.SourceResource):
-#
-#     def data(self) -> _OutputDataProxyType:
-#         pass
-#
-#     def is_done(self, name: str) -> bool:
-#         pass
-#
-#     def get(self, name: str) -> 'OutputData':
-#         pass
-#
-#     def update_output(self):
-#         pass
-#
-#     def reset(self):
-#         pass
-#
-#     def width(self) -> int:
-#         pass
-
-
-# class _GetItemFuture(gmxapi.operation.Future):
 class _GetItemFuture:
     def __init__(self, owner: 'Executable', attr: str, item: str, key: str, width: int = 1):
         self._owner = owner
