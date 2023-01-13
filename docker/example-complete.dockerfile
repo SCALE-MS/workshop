@@ -109,7 +109,15 @@ COPY --chown=rp:radical . /home/rp/scalems-workshop
 # Update workshop environment.
 # TODO: Install workshop package from cloud or source archive.
 COPY --chown=rp:radical .git /home/rp/scalems-workshop/.git
+RUN $RPVENV/bin/pip install --upgrade pip setuptools wheel
 RUN $RPVENV/bin/pip install /home/rp/scalems-workshop
+RUN $RPVENV/bin/pip uninstall -y radical.pilot radical.saga radical.utils
+
+# Update scalems
+# Avoid ambiguity from installation inherited from scalems/lammps image.
+RUN rm -rf /home/rp/scalems
+RUN . $RPVENV/bin/activate && pip install -r /home/rp/scalems-workshop/external/scale-ms/requirements-testing.txt
+RUN $RPVENV/bin/pip install --no-deps --no-build-isolation -e /home/rp/scalems-workshop/external/scale-ms
 
 # Restore the user for the default entry point (the mongodb server)
 USER mongodb
