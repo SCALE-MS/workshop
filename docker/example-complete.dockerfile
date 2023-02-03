@@ -88,6 +88,7 @@
 #     docker exec -ti -u rp -e HOME=/home/rp workshop-example bash -c ". rp-venv/bin/activate && python -m pytest scalems-workshop/external/scale-ms/tests --rp-resource local.localhost --rp-venv \$VIRTUAL_ENV"
 #     docker exec -ti -u rp -e HOME=/home/rp workshop-example bash -c ". rp-venv/bin/activate && python -m scalems.radical --resource=local.localhost --venv /home/rp/rp-venv scalems-workshop/external/scale-ms/examples/basic/echo.py hi there"
 #     docker exec -ti -u rp -e HOME=/home/rp workshop-example bash -c ". rp-venv/bin/activate && python scalems-workshop/external/scale-ms/examples/basic_pipeline/echo-pipeline.py  --resource=local.localhost --venv /home/rp/rp-venv -o stdout.txt hi there && cat stdout.txt"
+#     docker exec -ti -u rp -e HOME=/home/rp workshop-example bash -c ". rp-venv/bin/activate && python scalems-workshop/examples/basic_ensemble/rp_basic_ensemble.py  --resource=local.localhost --venv /home/rp/rp-venv --pilot-option cores=4 --cores-per-sim 2 --size 2 --maxh 0.01"
 #     docker kill workshop-example
 
 # Prerequisite: build base images from https://github.com/SCALE-MS/scale-ms/tree/master/docker
