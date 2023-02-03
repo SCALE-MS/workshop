@@ -1,4 +1,4 @@
 [submodule "external/scale-ms"]
 	path = external/scale-ms
 	url = git@github.com:SCALE-MS/scale-ms.git
-	branch = sms299-improved-function-dispatching
+	branch = master
