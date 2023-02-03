@@ -64,12 +64,12 @@
 # container will just leave you interacting with the MongoDB server process.
 #
 # Example usage (Python+LAMMPS only):
-#     docker run --rm -ti -u rp scalems/example-complete bash
+#     docker run --rm -ti -u rp -e HOME=/home/rp scalems/example-complete bash
 #     $ . ./rp-venv/bin/activate
 #     $ $RPVENV/bin/lmp ...
 #
 # Example usage (Python+gmxapi):
-#     docker run --rm -ti -u rp scalems/example-complete bash
+#     docker run --rm -ti -u rp -e HOME=/home/rp scalems/example-complete bash
 #     $ . ./rp-venv/bin/activate
 #     $ python
 #     >>> import gmxapi as gmx
@@ -81,13 +81,14 @@
 # 1. Launch the container (as root, so that the mongod can be started).
 # 2. Wait a few seconds for the MongoDB service to start.
 # 3. Exec the tests in the container.
-# 4. Stop or kill the container.
+# 4. Kill the container to remove it (or "stop" to pause and resume later).
 #
-#     docker run --rm --name scalems_test -d scalems/example-complete
+#     docker run --rm --name workshop-example -d scalems/example-complete
 #     sleep 3
-#     docker exec -ti -u rp scalems_test bash -c ". rp-venv/bin/activate && python -m pytest scalems/tests --rp-resource local.localhost --rp-venv \$VIRTUAL_ENV"
-#     docker exec -ti -u rp scalems_test bash -c ". rp-venv/bin/activate && python -m scalems.radical --resource=local.localhost --venv /home/rp/rp-venv scalems/examples/basic/echo.py hi there"
-#     docker stop scalems_test
+#     docker exec -ti -u rp -e HOME=/home/rp workshop-example bash -c ". rp-venv/bin/activate && python -m pytest scalems-workshop/external/scale-ms/tests --rp-resource local.localhost --rp-venv \$VIRTUAL_ENV"
+#     docker exec -ti -u rp -e HOME=/home/rp workshop-example bash -c ". rp-venv/bin/activate && python -m scalems.radical --resource=local.localhost --venv /home/rp/rp-venv scalems-workshop/external/scale-ms/examples/basic/echo.py hi there"
+#     docker exec -ti -u rp -e HOME=/home/rp workshop-example bash -c ". rp-venv/bin/activate && python scalems-workshop/external/scale-ms/examples/basic_pipeline/echo-pipeline.py  --resource=local.localhost --venv /home/rp/rp-venv -o stdout.txt hi there && cat stdout.txt"
+#     docker kill workshop-example
 
 # Prerequisite: build base images from https://github.com/SCALE-MS/scale-ms/tree/master/docker
 ARG TAG=latest
@@ -98,7 +99,7 @@ COPY --from=scalems/gromacs $RPVENV/gromacs $RPVENV/gromacs
 USER rp
 
 ARG GMXAPI_REF="gmxapi"
-RUN . $RPVENV/gromacs/bin/GMXRC && $RPVENV/bin/pip install $GMXAPI_REF
+RUN . $RPVENV/gromacs/bin/GMXRC && HOME=/home/rp $RPVENV/bin/pip install $GMXAPI_REF
 
 # Use a custom definition of `local.localhost`.
 COPY --chown=rp:radical docker/resource_local.json /home/rp/.radical/pilot/configs/resource_local.json
@@ -106,18 +107,17 @@ COPY --chown=rp:radical docker/resource_local.json /home/rp/.radical/pilot/confi
 # Update workshop material.
 COPY --chown=rp:radical . /home/rp/scalems-workshop
 
-# Update workshop environment.
-# TODO: Install workshop package from cloud or source archive.
 COPY --chown=rp:radical .git /home/rp/scalems-workshop/.git
-RUN $RPVENV/bin/pip install --upgrade pip setuptools wheel
-RUN $RPVENV/bin/pip install /home/rp/scalems-workshop
-RUN $RPVENV/bin/pip uninstall -y radical.pilot radical.saga radical.utils
-
-# Update scalems
 # Avoid ambiguity from installation inherited from scalems/lammps image.
 RUN rm -rf /home/rp/scalems
-RUN . $RPVENV/bin/activate && pip install -r /home/rp/scalems-workshop/external/scale-ms/requirements-testing.txt
-RUN $RPVENV/bin/pip install --no-deps --no-build-isolation -e /home/rp/scalems-workshop/external/scale-ms
+RUN . $RPVENV/bin/activate && HOME=/home/rp $RPVENV/bin/pip uninstall -y radical.pilot radical.saga radical.utils
+RUN HOME=/home/rp $RPVENV/bin/pip install --upgrade pip setuptools wheel
+# Update scalems
+RUN . $RPVENV/bin/activate && HOME=/home/rp pip install -r /home/rp/scalems-workshop/external/scale-ms/requirements-testing.txt
+RUN . $RPVENV/bin/activate && HOME=/home/rp $RPVENV/bin/pip install --no-deps --no-build-isolation -e /home/rp/scalems-workshop/external/scale-ms
+# Update workshop environment.
+# TODO: Install workshop package from cloud or source archive.
+RUN . $RPVENV/bin/activate && HOME=/home/rp $RPVENV/bin/pip install /home/rp/scalems-workshop
 
 # Restore the user for the default entry point (the mongodb server)
 USER mongodb
