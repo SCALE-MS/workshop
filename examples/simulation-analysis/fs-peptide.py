@@ -102,14 +102,18 @@ if __name__ == '__main__':
 
     allocation_size = args.cores
     try:
-        local_cpu_set_size = len(os.sched_getaffinity(0))
+        local_cpu_set = os.sched_getaffinity(0)
+        local_cpu_set_size = len(local_cpu_set)
     except (NotImplementedError, AttributeError):
-        threads_per_rank = allocation_size // comm_size
-    else:
+        local_cpu_set = None
+        local_cpu_set_size = None
+    if local_cpu_set_size is not None:
         threads_per_rank = min(local_cpu_set_size, allocation_size // comm_size)
+    else:
+        threads_per_rank = allocation_size // comm_size
 
     logging.info(f'Requesting {threads_per_rank} threads on rank {rank_number}, based on allocation size '
-                 f'{allocation_size}, comm size {comm_size}, and CPU sets {os.sched_getaffinity(0)} ('
+                 f'{allocation_size}, comm size {comm_size}, and CPU set {local_cpu_set} ('
                  f'length {local_cpu_set_size}).')
 
     # Call the main work.
