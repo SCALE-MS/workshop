@@ -95,12 +95,15 @@
 ARG TAG=latest
 FROM scalems/lammps:$TAG
 
-COPY --from=scalems/gromacs $RPVENV/gromacs $RPVENV/gromacs
+COPY --from=scalems/gromacs --chown=rp:radical $RPVENV/gromacs $RPVENV/gromacs
+COPY --from=scalems/gromacs --chown=rp:radical $RPVENV/gromacs_mpi $RPVENV/gromacs_mpi
 
 USER rp
 
 ARG GMXAPI_REF="gmxapi"
-RUN . $RPVENV/gromacs/bin/GMXRC && HOME=/home/rp $RPVENV/bin/pip install $GMXAPI_REF
+ARG GROMACS_SUFFIX=""
+# Alternative: --build-arg GROMACS_SUFFIX="_mpi"
+RUN . $RPVENV/gromacs$GROMACS_SUFFIX/bin/GMXRC && HOME=/home/rp $RPVENV/bin/pip install --no-cache-dir --upgrade $GMXAPI_REF
 
 # Use a custom definition of `local.localhost`.
 COPY --chown=rp:radical docker/resource_local.json /home/rp/.radical/pilot/configs/resource_local.json
@@ -112,13 +115,13 @@ COPY --chown=rp:radical .git /home/rp/scalems-workshop/.git
 # Avoid ambiguity from installation inherited from scalems/lammps image.
 RUN rm -rf /home/rp/scalems
 RUN . $RPVENV/bin/activate && HOME=/home/rp $RPVENV/bin/pip uninstall -y radical.pilot radical.saga radical.utils
-RUN HOME=/home/rp $RPVENV/bin/pip install --upgrade pip setuptools wheel
+RUN HOME=/home/rp $RPVENV/bin/pip install --no-cache-dir --upgrade pip setuptools wheel
 # Update scalems
-RUN . $RPVENV/bin/activate && HOME=/home/rp pip install -r /home/rp/scalems-workshop/external/scale-ms/requirements-testing.txt
-RUN . $RPVENV/bin/activate && HOME=/home/rp $RPVENV/bin/pip install --no-deps --no-build-isolation -e /home/rp/scalems-workshop/external/scale-ms
+RUN . $RPVENV/bin/activate && HOME=/home/rp pip install --no-cache-dir  -r /home/rp/scalems-workshop/external/scale-ms/requirements-testing.txt
+RUN . $RPVENV/bin/activate && HOME=/home/rp $RPVENV/bin/pip install --no-cache-dir --no-deps --no-build-isolation -e /home/rp/scalems-workshop/external/scale-ms
 # Update workshop environment.
 # TODO: Install workshop package from cloud or source archive.
-RUN . $RPVENV/bin/activate && HOME=/home/rp $RPVENV/bin/pip install /home/rp/scalems-workshop
+RUN . $RPVENV/bin/activate && HOME=/home/rp $RPVENV/bin/pip install --no-cache-dir /home/rp/scalems-workshop
 
 # Restore the user for the default entry point (the mongodb server)
 USER mongodb
