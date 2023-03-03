@@ -44,6 +44,7 @@ parser.add_argument(
          'https://docs.python.org/3/library/logging.html#logging-levels)'
 )
 
+
 def main(*, input_dir: Path, maxh: float, ensemble_size: int, threads_per_rank: int):
     """Gromacs simulation on ensemble input
 
