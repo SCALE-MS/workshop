@@ -55,7 +55,7 @@ First, install GROMACS 2022, create a Python virtual environment, and install th
 
 0. Clone this repository.
    ```shell
-   git clone -b scalems-rp-task-packaging --recurse-submodules https://github.com/SCALE-MS/workshop.git
+   git clone --recurse-submodules https://github.com/SCALE-MS/workshop.git
    cd workshop
    ```
 1. Install additional tutorial dependencies in the virtual environment, using the provided [requirements.txt](requirements.txt).
