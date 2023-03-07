@@ -21,8 +21,8 @@ For thread-MPI gromacs, run::
         --pilot-option cores=4 \
         --procs-per-sim 1 \
         --threads-per-sim 2 \
-        --mdrun-arg "-nt" 2 \
-        --mdrun-arg "-ntomp" 1 \
+        --mdrun-arg nt 2 \
+        --mdrun-arg ntomp 1 \
         --size 2 \
         --mdrun-arg maxh 1.0
 
@@ -35,7 +35,7 @@ or::
         --pilot-option cores=4 \
         --procs-per-sim 1 \
         --threads-per-sim 2 \
-        --mdrun-arg "-nt" 2 \
+        --mdrun-arg nt 2 \
         --size 2 \
         --mdrun-arg maxh 1.0
 
@@ -94,7 +94,7 @@ async def main(
 
     input_dir: Path = config.inputs
     ensemble_size: int = config.size
-    mdrun_args = {opt[0]: list(opt[1:]) for opt in config.mdrun_args}
+    mdrun_args = {opt[0]: " ".join(opt[1:]) for opt in config.mdrun_args}
 
     commandline = [
         gmx.commandline.cli_executable(),
