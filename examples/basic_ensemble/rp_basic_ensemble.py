@@ -43,12 +43,16 @@ For MPI GROMACS::
 
     python rp_basic_ensemble.py \
         --resource local.localhost \
-        --access local \
+        --access ssh \
         --venv $VIRTUAL_ENV \
         --pilot-option cores=4 \
         --procs-per-sim 2 \
         --size 2 \
         --mdrun-arg maxh 1.0
+
+Note that RP access schemes based on forking the Python interpreter may not work
+right with MPI-enabled tasks. Check the resource definition and prefer an access
+scheme that uses ``ssh`` or a job management system, like ``slurm``.
 
 """
 from __future__ import annotations
