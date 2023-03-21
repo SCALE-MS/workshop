@@ -6,4 +6,4 @@ mpi4py
 numpy
 pip
 radical.pilot>=1.20
-scalems
+scalems>=0.0.0
