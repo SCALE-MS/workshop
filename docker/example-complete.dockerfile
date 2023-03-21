@@ -88,7 +88,7 @@
 #     docker exec -ti -u rp -e HOME=/home/rp workshop-example bash -c ". rp-venv/bin/activate && python -m pytest scalems-workshop/external/scale-ms/tests --rp-resource local.localhost --rp-venv \$VIRTUAL_ENV"
 #     docker exec -ti -u rp -e HOME=/home/rp workshop-example bash -c ". rp-venv/bin/activate && python -m scalems.radical --resource=local.localhost --venv /home/rp/rp-venv scalems-workshop/external/scale-ms/examples/basic/echo.py hi there"
 #     docker exec -ti -u rp -e HOME=/home/rp workshop-example bash -c ". rp-venv/bin/activate && python scalems-workshop/external/scale-ms/examples/basic_pipeline/echo-pipeline.py  --resource=local.localhost --venv /home/rp/rp-venv -o stdout.txt hi there && cat stdout.txt"
-#     docker exec -ti -u rp -e HOME=/home/rp workshop-example bash -c ". rp-venv/bin/activate && python scalems-workshop/examples/basic_ensemble/rp_basic_ensemble.py  --resource=local.localhost --venv /home/rp/rp-venv --pilot-option cores=4 --cores-per-sim 2 --size 2 --maxh 0.01"
+#     docker exec -ti -u rp -e HOME=/home/rp workshop-example bash -c ". rp-venv/bin/activate && python scalems-workshop/examples/basic_ensemble/rp_basic_ensemble.py  --resource=local.localhost --venv /home/rp/rp-venv --pilot-option cores=4 --omp-threads-per-sim 2 --size 2 --mdrun-arg maxh 0.01"
 #     docker kill workshop-example
 
 # Prerequisite: build base images from https://github.com/SCALE-MS/scale-ms/tree/master/docker
@@ -103,6 +103,11 @@ USER rp
 ARG GMXAPI_REF="gmxapi"
 ARG GROMACS_SUFFIX=""
 # Alternative: --build-arg GROMACS_SUFFIX="_mpi"
+# WARNING: MPI may have limited utility in this image.
+# RP may not work right for `local` (fork-based) task launch
+# in an environment that may have imported mpi4py,
+# and there is no `sshd` for alternative launch methods.
+# See https://github.com/SCALE-MS/scale-ms/issues/312
 RUN . $RPVENV/gromacs$GROMACS_SUFFIX/bin/GMXRC && HOME=/home/rp $RPVENV/bin/pip install --no-cache-dir --upgrade $GMXAPI_REF
 
 # Use a custom definition of `local.localhost`.
