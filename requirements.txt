@@ -5,5 +5,5 @@ jupyter
 mpi4py
 numpy
 pip
-git+https://github.com/radical-cybertools/radical.pilot.git@feature/raptor_api_2#egg=radical.pilot
-git+https://github.com/SCALE-MS/scale-ms.git@sms253-devel
+radical.pilot>=1.33
+scalems>=0.0.1b1
