@@ -63,7 +63,7 @@ First, install GROMACS 2022, create a Python virtual environment, and install th
     . /path/to/venv/bin/activate
     . /path/to/gromacs/bin/GMXRC
     pip install gmxapi
-    pip install external/scale-ms/requirements-testing.txt
+    pip install -r external/scale-ms/requirements-testing.txt
     pip install external/scale-ms
     pip install -r requirements.txt
     ```
