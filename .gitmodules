@@ -1,4 +1,4 @@
 [submodule "external/scale-ms"]
 	path = external/scale-ms
 	url = git@github.com:SCALE-MS/scale-ms.git
-	branch = sms326-executable-devel
+	branch = master
