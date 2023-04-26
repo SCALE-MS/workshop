@@ -45,6 +45,44 @@ docker run --rm -ti -u rp -e HOME=/home/rp scalems/example-complete bash -c \
 '. rp-venv/bin/activate; mkdir exercise1 && cd exercise1 && mpiexec -n 2 `which python` -m mpi4py ~/scalems-workshop/examples/basic_ensemble/basic_ensemble.py --maxh 0.001'
 ```
 
+### Example 01.1
+
+Run a simulation or array of simulations from a script.
+
+Note that the raptor task and worker will consume at least 2 cores from the pilot allocation.
+
+Replace `size` with an appropriate ensemble size. Remove or update the `maxh` *mdrun-arg* for desired simulation length.
+
+```shell
+cd external/scale-ms/docker
+# Use the following line if and only if you need a non-default gromacs build.
+docker compose build --build-arg GROMACS_SUFFIX=_mpi login compute
+docker compose up -d
+docker compose cp ../../../ login:/home/rp/
+docker compose exec login bash -c 'chown -R rp:radical /home/rp'
+docker compose exec -ti -u rp -e HOME=/home/rp login bash
+```
+
+Then, in the container environment:
+
+```shell
+. rp-venv/bin/activate
+pip install -r scalems-workshop/external/scale-ms/requirements-testing.txt
+pip install -e scalems-workshop/external/scale-ms
+pip install -e scalems-workshop
+mkdir exercise1
+cd exercise1
+python ~/scalems-workshop/examples/basic_ensemble/rp_basic_ensemble.py \
+  --resource docker.login \
+  --access ssh \
+  --venv $VIRTUAL_ENV \
+  --procs-per-sim 1 \
+  --pilot-option cores=4 \
+  --size 2 \
+  --mdrun-arg maxh 0.001 \
+  --enable-raptor
+```
+
 ### Example 02
 
 Run a simulation-ensemble-analysis loop from a script.
